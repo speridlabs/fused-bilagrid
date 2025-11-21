@@ -13,7 +13,7 @@ __global__ void bilagrid_uniform_sample_forward_kernel(
     int m, int h, int w
 #ifdef PATCHED
     , int h0, int w0,
-    const int* offsets  // [N,m,2]
+    const int* __restrict__ offsets  // [N,m,2]
 #endif
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
