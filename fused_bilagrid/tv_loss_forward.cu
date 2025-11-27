@@ -2,6 +2,8 @@
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 
+#include "config.h"
+
 namespace cg = cooperative_groups;
 
 
@@ -81,7 +83,8 @@ __global__ void tv_loss_forward_kernel(
 void tv_loss_forward(
     const float* bilagrid,
     float* tv_loss,
-    int N, int L, int H, int W
+    int N, int L, int H, int W,
+    cudaStream_t stream
 ) {
     dim3 block = { 4, 4, 4 };
     dim3 bounds = {
@@ -90,8 +93,9 @@ void tv_loss_forward(
         // (N*12*L +block.z-1)/block.z
         (N*L +block.z-1)/block.z
     };
-    tv_loss_forward_kernel<<<bounds, block>>>(
+    tv_loss_forward_kernel<<<bounds, block, 0, stream>>>(
         bilagrid, tv_loss,
         N, L, H, W
     );
+    CHECK_DEVICE_ERROR;
 }

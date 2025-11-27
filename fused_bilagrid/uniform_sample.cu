@@ -13,15 +13,17 @@ void bilagrid_uniform_sample_forward(
     const float* rgb,
     float* output,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 ) {
     int total = N * m * h * w;
     int threads = 256;
     int blocks = (total + threads - 1) / threads;
-    bilagrid_uniform_sample_forward_kernel<<<blocks, threads>>>(
+    bilagrid_uniform_sample_forward_kernel<<<blocks, threads, 0, stream>>>(
         bilagrid, rgb, output,
         N, L, H, W, m, h, w
     );
+    CHECK_DEVICE_ERROR;
     // cudaDeviceSynchronize();
 }
 
@@ -32,15 +34,17 @@ void bilagrid_patched_sample_forward(
     const int* offsets,
     float* output,
     int N, int L, int H, int W,
-    int m, int h, int w, int h0, int w0
+    int m, int h, int w, int h0, int w0,
+    cudaStream_t stream
 ) {
     int total = N * m * h * w;
     int threads = 256;
     int blocks = (total + threads - 1) / threads;
-    bilagrid_patched_sample_forward_kernel<<<blocks, threads>>>(
+    bilagrid_patched_sample_forward_kernel<<<blocks, threads, 0, stream>>>(
         bilagrid, rgb, output,
         N, L, H, W, m, h, w, h0, w0, offsets
     );
+    CHECK_DEVICE_ERROR;
     // cudaDeviceSynchronize();
 }
 
@@ -54,7 +58,8 @@ void bilagrid_uniform_sample_backward_v1(
     int N, int L, int H, int W,
     int m, int h, int w,
     const unsigned block_x, const unsigned block_y,
-    const int target_tile_size
+    const int target_tile_size,
+    cudaStream_t stream
 ) {
     // v_bilagrid
     {
@@ -75,10 +80,11 @@ void bilagrid_uniform_sample_backward_v1(
             (H*mult_y +block.y-1)/block.y,
             (N*L +block.z-1)/block.z
         };
-        bilagrid_uniform_sample_backward_v1_kernel_bilagrid<<<bounds, block>>>(
+        bilagrid_uniform_sample_backward_v1_kernel_bilagrid<<<bounds, block, 0, stream>>>(
             rgb, v_output, v_bilagrid,
             N, L, H, W, m, h, w, mult_x, mult_y
         );
+        CHECK_DEVICE_ERROR;
     }
 
     // v_coords and v_rgb
@@ -86,11 +92,12 @@ void bilagrid_uniform_sample_backward_v1(
         int total = N * m * h * w;
         int threads = 256;
         int blocks = (total + threads - 1) / threads;
-        bilagrid_uniform_sample_backward_v1_kernel_rgb<<<blocks, threads>>>(
+        bilagrid_uniform_sample_backward_v1_kernel_rgb<<<blocks, threads, 0, stream>>>(
             bilagrid, rgb, v_output,
             v_rgb,
             N, L, H, W, m, h, w
         );
+        CHECK_DEVICE_ERROR;
     }
 }
 
@@ -106,7 +113,8 @@ void bilagrid_patched_sample_backward_v1(
     int m, int h, int w, int h0, int w0,
     const unsigned block_x, const unsigned block_y,
     const int target_tile_size,
-    const int mi_batch_size
+    const int mi_batch_size,
+    cudaStream_t stream
 ) {
     // v_bilagrid
     {
@@ -134,10 +142,11 @@ void bilagrid_patched_sample_backward_v1(
             (N*num_m_batches*L +block.z-1)/block.z
         };
         // printf("bounds: %u %u %u\n", bounds.x, bounds.y, bounds.z);
-        bilagrid_patched_sample_backward_v1_kernel_bilagrid<<<bounds, block>>>(
+        bilagrid_patched_sample_backward_v1_kernel_bilagrid<<<bounds, block, 0, stream>>>(
             rgb, v_output, v_bilagrid,
             N, L, H, W, m, h, w, h0, w0, offsets, mult_x, mult_y, num_m_batches
         );
+        CHECK_DEVICE_ERROR;
     }
 
     // v_rgb
@@ -145,10 +154,11 @@ void bilagrid_patched_sample_backward_v1(
         int total = N * m * h * w;
         int threads = 256;
         int blocks = (total + threads - 1) / threads;
-        bilagrid_patched_sample_backward_v1_kernel_rgb<<<blocks, threads>>>(
+        bilagrid_patched_sample_backward_v1_kernel_rgb<<<blocks, threads, 0, stream>>>(
             bilagrid, rgb, v_output, v_rgb,
             N, L, H, W, m, h, w, h0, w0, offsets
         );
+        CHECK_DEVICE_ERROR;
     }
 }
 
@@ -160,7 +170,8 @@ void bilagrid_uniform_sample_backward_v2(
     float* v_bilagrid,
     float* v_rgb,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 ) {
     dim3 block = { 16, 16, 1 };
     dim3 bounds = {
@@ -168,11 +179,12 @@ void bilagrid_uniform_sample_backward_v2(
         (h +block.y-1)/block.y,
         (N*m +block.z-1)/block.z
     };
-    bilagrid_uniform_sample_backward_v2_kernel<<<bounds, block>>>(
+    bilagrid_uniform_sample_backward_v2_kernel<<<bounds, block, 0, stream>>>(
         bilagrid, rgb, v_output,
         v_bilagrid, v_rgb,
         N, L, H, W, m, h, w
     );
+    CHECK_DEVICE_ERROR;
 }
 
 
@@ -184,7 +196,8 @@ void bilagrid_patched_sample_backward_v2(
     float* v_bilagrid,
     float* v_rgb,
     int N, int L, int H, int W,
-    int m, int h, int w, int h0, int w0
+    int m, int h, int w, int h0, int w0,
+    cudaStream_t stream
 ) {
     // dim3 block = { 16, 16, 1 };
     // dim3 bounds = {
@@ -194,9 +207,10 @@ void bilagrid_patched_sample_backward_v2(
     // };
     uint block = 256;
     uint bounds = (w*h*N*m +block-1)/block;
-    bilagrid_patched_sample_backward_v2_kernel<<<bounds, block>>>(
+    bilagrid_patched_sample_backward_v2_kernel<<<bounds, block, 0, stream>>>(
         bilagrid, rgb, v_output,
         v_bilagrid, v_rgb,
         N, L, H, W, m, h, w, h0, w0, offsets
     );
+    CHECK_DEVICE_ERROR;
 }

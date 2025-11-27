@@ -99,14 +99,16 @@ void bilagrid_sample_forward(
     const float* rgb,
     float* output,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 ) {
     int total = N * m * h * w;
     int threads = 256;
     int blocks = (total + threads - 1) / threads;
-    bilagrid_sample_forward_kernel<<<blocks, threads>>>(
+    bilagrid_sample_forward_kernel<<<blocks, threads, 0, stream>>>(
         bilagrid, coords, rgb, output,
         N, L, H, W, m, h, w
     );
+    CHECK_DEVICE_ERROR;
     // cudaDeviceSynchronize();
 }

@@ -1,4 +1,5 @@
 #include <torch/extension.h>
+#include <c10/cuda/CUDAGuard.h>
 
 
 void bilagrid_sample_forward(
@@ -7,7 +8,8 @@ void bilagrid_sample_forward(
     const float* rgb,
     float* output,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 );
 
 
@@ -20,7 +22,8 @@ void bilagrid_sample_backward(
     float* v_coords,
     float* v_rgb,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 );
 
 
@@ -29,7 +32,8 @@ void bilagrid_uniform_sample_forward(
     const float* rgb,
     float* output,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 );
 
 
@@ -39,7 +43,8 @@ void bilagrid_patched_sample_forward(
     const int* offsets,
     float* output,
     int N, int L, int H, int W,
-    int m, int h, int w, int h0, int w0
+    int m, int h, int w, int h0, int w0,
+    cudaStream_t stream
 );
 
 void bilagrid_uniform_sample_backward_v1(
@@ -51,7 +56,8 @@ void bilagrid_uniform_sample_backward_v1(
     int N, int L, int H, int W,
     int m, int h, int w,
     const unsigned block_x, const unsigned block_y,
-    const int target_tile_size
+    const int target_tile_size,
+    cudaStream_t stream
 );
 
 void bilagrid_patched_sample_backward_v1(
@@ -65,7 +71,8 @@ void bilagrid_patched_sample_backward_v1(
     int m, int h, int w, int h0, int w0,
     const unsigned block_x, const unsigned block_y,
     const int target_tile_size,
-    const int mi_batch_size
+    const int mi_batch_size,
+    cudaStream_t stream
 );
 
 void bilagrid_uniform_sample_backward_v2(
@@ -75,7 +82,8 @@ void bilagrid_uniform_sample_backward_v2(
     float* v_bilagrid,
     float* v_rgb,
     int N, int L, int H, int W,
-    int m, int h, int w
+    int m, int h, int w,
+    cudaStream_t stream
 );
 
 void bilagrid_patched_sample_backward_v2(
@@ -86,14 +94,16 @@ void bilagrid_patched_sample_backward_v2(
     float* v_bilagrid,
     float* v_rgb,
     int N, int L, int H, int W,
-    int m, int h, int w, int h0, int w0
+    int m, int h, int w, int h0, int w0,
+    cudaStream_t stream
 );
 
 
 void tv_loss_forward(
     const float* input,
     float* tv_loss,
-    int N, int L, int H, int W
+    int N, int L, int H, int W,
+    cudaStream_t stream
 );
 
 
@@ -101,7 +111,8 @@ void tv_loss_backward(
     const float* bilagrid,
     const float v_tv_loss,
     float* v_bilagrid,
-    int N, int L, int H, int W
+    int N, int L, int H, int W,
+    cudaStream_t stream
 );
 
 
@@ -121,7 +132,8 @@ torch::Tensor bilagrid_sample_forward_tensor(
         coords.data_ptr<float>(),
         rgb.data_ptr<float>(),
         output.data_ptr<float>(),
-        N, L, H, W, m, h, w
+        N, L, H, W, m, h, w,
+        at::cuda::getCurrentCUDAStream()
     );
     
     return output;
@@ -154,7 +166,8 @@ bilagrid_sample_backward_tensor(
             v_bilagrid.data_ptr<float>(),
             v_coords.data_ptr<float>(),
             v_rgb.data_ptr<float>(),
-            N, L, H, W, m, h, w
+            N, L, H, W, m, h, w,
+            at::cuda::getCurrentCUDAStream()
         );
         return std::make_tuple(v_bilagrid, v_coords, v_rgb);
     }
@@ -169,7 +182,8 @@ bilagrid_sample_backward_tensor(
             v_bilagrid.data_ptr<float>(),
             nullptr,
             v_rgb.data_ptr<float>(),
-            N, L, H, W, m, h, w
+            N, L, H, W, m, h, w,
+            at::cuda::getCurrentCUDAStream()
         );
         return std::make_tuple(v_bilagrid, v_coords, v_rgb);
     }
@@ -190,7 +204,8 @@ torch::Tensor bilagrid_uniform_sample_forward_tensor(
         bilagrid.data_ptr<float>(),
         rgb.data_ptr<float>(),
         output.data_ptr<float>(),
-        N, L, H, W, m, h, w
+        N, L, H, W, m, h, w,
+        at::cuda::getCurrentCUDAStream()
     );
     
     return output;
@@ -224,7 +239,8 @@ bilagrid_uniform_sample_backward_tensor(
             v_rgb.data_ptr<float>(),
             N, L, H, W, m, h, w,
             (unsigned)block_x, (unsigned)block_y,
-            target_tile_size
+            target_tile_size,
+            at::cuda::getCurrentCUDAStream()
         );
     }
     else if (version == 2) {
@@ -235,7 +251,8 @@ bilagrid_uniform_sample_backward_tensor(
             v_output.data_ptr<float>(),
             v_bilagrid.data_ptr<float>(),
             v_rgb.data_ptr<float>(),
-            N, L, H, W, m, h, w
+            N, L, H, W, m, h, w,
+            at::cuda::getCurrentCUDAStream()
         );
     }
 
@@ -260,7 +277,8 @@ torch::Tensor bilagrid_patched_sample_forward_tensor(
         rgb.data_ptr<float>(),
         offsets.data_ptr<int>(),
         output.data_ptr<float>(),
-        N, L, H, W, m, h, w, h0, w0
+        N, L, H, W, m, h, w, h0, w0,
+        at::cuda::getCurrentCUDAStream()
     );
     
     return output;
@@ -291,8 +309,9 @@ bilagrid_patched_sample_backward_tensor(
         v_output.data_ptr<float>(),
         v_bilagrid.data_ptr<float>(),
         v_rgb.data_ptr<float>(),
-        N, L, H, W, m, h, w, h0, w0
-        // , 8, 8, 4, 1
+        N, L, H, W, m, h, w, h0, w0,
+        // 8, 8, 4, 1,
+        at::cuda::getCurrentCUDAStream()
     );
 
     return std::make_tuple(v_bilagrid, v_rgb);
@@ -310,7 +329,8 @@ torch::Tensor tv_loss_forward_tensor(
     tv_loss_forward(
         bilagrid.data_ptr<float>(),
         tv_loss.data_ptr<float>(),
-        N, L, H, W
+        N, L, H, W,
+        at::cuda::getCurrentCUDAStream()
     );
     
     return tv_loss;
@@ -330,7 +350,8 @@ torch::Tensor tv_loss_backward_tensor(
         bilagrid.data_ptr<float>(),
         v_tv_loss.item<float>(),
         v_bilagrid.data_ptr<float>(),
-        N, L, H, W
+        N, L, H, W,
+        at::cuda::getCurrentCUDAStream()
     );
 
     return v_bilagrid;

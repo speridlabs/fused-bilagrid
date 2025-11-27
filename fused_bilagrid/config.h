@@ -14,4 +14,20 @@
     }
 #endif
 
+#ifdef __CUDACC__
+
+#include <stdio.h>
+
+#define CHECK_DEVICE_ERROR \
+    do { \
+        cudaError_t err = cudaGetLastError(); \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "CUDA Error at %s:%d: %s\n", \
+                    __FILE__, __LINE__, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    } while (0)
+
+#endif
+
 #endif  // _CONFIG_H_INC

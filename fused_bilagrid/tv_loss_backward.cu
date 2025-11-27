@@ -1,3 +1,4 @@
+#include "config.h"
 
 __global__ void tv_loss_backward_kernel(
     const float* __restrict__ bilagrid,   // [N,12,L,H,W]
@@ -59,7 +60,8 @@ void tv_loss_backward(
     const float* bilagrid,
     const float v_tv_loss,
     float* v_bilagrid,
-    int N, int L, int H, int W
+    int N, int L, int H, int W,
+    cudaStream_t stream
 ) {
     dim3 block(4, 4, 4);
     dim3 grid(
@@ -67,7 +69,8 @@ void tv_loss_backward(
         (H + block.y - 1) / block.y,
         (N*L + block.z - 1) / block.z
     );
-    tv_loss_backward_kernel<<<grid, block>>>(
+    tv_loss_backward_kernel<<<grid, block, 0, stream>>>(
         bilagrid, v_tv_loss, v_bilagrid, N, L, H, W
     );
+    CHECK_DEVICE_ERROR;
 }
