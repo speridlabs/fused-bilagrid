@@ -1,3 +1,28 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "torch"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "fused_bilagrid"
+version = "0.1.0"
+description = "Fully fused differentiable bilateral grid CUDA kernels for PyTorch"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+dependencies = [
+    "torch",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "nerfstudio",
+]
+
+[project.urls]
+Homepage = "https://github.com/speridlabs/fused-bilagrid"
+Repository = "https://github.com/speridlabs/fused-bilagrid"
